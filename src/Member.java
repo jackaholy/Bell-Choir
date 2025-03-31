@@ -13,11 +13,10 @@ public class Member implements Runnable {
     private final AudioFormat audioFormat;
     private boolean isPlaying = false;
 
-
     // Constructor
-    Member(BellNote bn, AudioFormat af) {
-        this.note = bn.note;
-        this.bellNote = bn;
+    Member(BellNote bellNote, AudioFormat af) {
+        this.note = bellNote.note;
+        this.bellNote = bellNote;
         this.audioFormat = af;
         thread = new Thread(this);
     }
