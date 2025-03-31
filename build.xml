@@ -1,7 +1,9 @@
-<project name="src.Tone" default="compile" basedir=".">
+<project name="src.Conductor" default="compile" basedir=".">
     <!--  set global properties for this build  -->
     <property name="src" location="src"/>
     <property name="dist" location="dist"/>
+    <property name="songs" value="songs"/>
+
     <presetdef name="javac">
         <javac includeantruntime="false"/>
     </presetdef>
@@ -19,10 +21,13 @@
             </manifest>
         </jar>
     </target>
-    <target name="songarg" unless="song">
-        <property name="song" value="${basedir}/songFile.txt"/>
+    <target name="songarg">
+        <condition property="song" value="${basedir}/${songs}/${song}" else="${basedir}/${songs}/songFile.txt">
+            <isset property="song"/>
+        </condition>
     </target>
     <target name="run" depends="jar,songarg">
+        <echo>Running with song file: ${song}</echo>
         <java jar="${dist}/${ant.project.name}.jar" fork="true">
             <arg value="${song}"/>
         </java>
