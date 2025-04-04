@@ -103,6 +103,7 @@ public class Conductor implements Runnable {
         if (file.exists()) {
             // Use try-with-resources to ensure Scanner is closed automatically
             try (Scanner scanner = new Scanner(file)) {
+
                 while (scanner.hasNextLine()) {
                     String line = scanner.nextLine();
 
@@ -113,6 +114,13 @@ public class Conductor implements Runnable {
 
                     // Split line into components (note and length)
                     String[] token = line.split(" ");
+
+                    // Skip lines without exactly 2 tokens
+                    if (token.length != 2) {
+                        System.err.printf("Invalid format on line '%s' (expected 'NOTE LENGTH')", line);
+                        continue;
+                    }
+
                     /*
                     This try-catch loop is created with help from chat.deepseek.com.
                     I asked it to give me some edge cases and error handling
