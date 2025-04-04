@@ -7,13 +7,16 @@
     <presetdef name="javac">
         <javac includeantruntime="false"/>
     </presetdef>
+
     <target name="init">
         <mkdir dir="${dist}"/>
         <mkdir dir="${dist}/classes"/>
     </target>
+
     <target name="compile" depends="init">
         <javac srcdir="${src}" debug="true" destdir="${dist}/classes"/>
     </target>
+
     <target name="jar" depends="init,compile">
         <jar destfile="${dist}/${ant.project.name}.jar" basedir="${dist}/classes">
             <manifest>
@@ -21,17 +24,25 @@
             </manifest>
         </jar>
     </target>
+
     <target name="songarg">
-        <condition property="song" value="${basedir}/${songs}/${song}" else="${basedir}/${songs}/songFile.txt">
-            <isset property="song"/>
+        <property name="song" value="${basedir}/${songs}/songFile.txt"/> <!-- Default song file -->
+        <condition property="song">
+            <and>
+                <!-- Check if the song property is defined via -D option -->
+                <isset property="song"/>
+                <available file="${basedir}/${songs}/${song}"/>
+            </and>
         </condition>
     </target>
+
     <target name="run" depends="jar,songarg">
         <echo>Running with song file: ${song}</echo>
         <java jar="${dist}/${ant.project.name}.jar" fork="true">
             <arg value="${song}"/>
         </java>
     </target>
+
     <target name="clean">
         <delete dir="${dist}"/>
     </target>
