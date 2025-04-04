@@ -16,7 +16,7 @@ public class BellNote {
         return note;
     }
 
-    public Object getLength() {
+    public NoteLength getLength() {
         return length;
     }
 }
