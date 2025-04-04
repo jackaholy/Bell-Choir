@@ -14,7 +14,7 @@ Create a new folder or choose one on your local machine:
 cd /Path/To/Folder
 ```
 
-Move into a new directory and run
+Move into a new directory and run:
 
 ```bash
 git clone https://github.com/jackaholy/Bell-Choir
@@ -22,25 +22,25 @@ git clone https://github.com/jackaholy/Bell-Choir
 
 ### Build Application
 
-Make sure you're in your root directory (Tone):
+To build the application, first make sure you're in your root directory (Tone) and run:
 
 ```bash
 ant compile
 ```
 
-This will comile all the files.
+This will compile all the files.
 
 ### Run Application
 
-Make sure you're in your root directory (Tone) and run:
+To run the application without any specified song, make sure you're in your root directory (Tone) and run:
 
 ```bash
 ant run
 ```
 
-This will automatically play the default song in the folder.
+This will automatically play the default song I have in the songs folder.
 
-If you want to run a custom song, make sure it's in the proper note format, as a txt file, and put it in:
+If you want to play a custom song, make sure it's in the proper note format, as a .txt file, and put it in:
 
 ```
 /Tone/songs
