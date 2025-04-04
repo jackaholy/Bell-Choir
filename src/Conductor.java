@@ -1,16 +1,19 @@
 package src;
 
 import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.SourceDataLine;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 
 public class Conductor implements Runnable {
 
     private final Thread thread;
+    private final AudioFormat af;
+    private final SourceDataLine line;
+    private final Map<Note, Member> members = new HashMap<>();
     private static List<BellNote> song;
 
     public static void main(String[] args) {
@@ -29,11 +32,32 @@ public class Conductor implements Runnable {
             final AudioFormat af =
                     new AudioFormat(Note.SAMPLE_RATE, 8, 1, true, false);
             Conductor conductor = new Conductor(af);
+            // Tell the conductor to play the song.
             conductor.playSong(song);
+            conductor.stopMembers();
         } catch (LineUnavailableException e) {
             System.out.println("Line unavailable");
         }
     }
+
+    public Conductor(AudioFormat af) throws LineUnavailableException {
+        thread = new Thread(this, "Conductor");
+        this.af = af;
+        this.line = AudioSystem.getSourceDataLine(af); // Initialize the line
+    }
+
+    private void assignParts() {
+        // Assign the notes to each member.
+        for (BellNote note : song) {
+            members.put(note.getNote(), new Member(note, line)); // Assign the note to the member
+            System.out.println("Assigned note: " + note.getNote() + " to member: " + members.get(note.getNote()));
+        }
+
+        if (members.isEmpty()) {
+            System.err.println("No members available to play notes.");
+        }
+    }
+
 
     private static List<BellNote> loadNotes(String filename) {
         final File file = new File(filename);
@@ -60,34 +84,25 @@ public class Conductor implements Runnable {
     }
 
     void playSong(List<BellNote> song) throws LineUnavailableException {
-        List<Thread> members = new ArrayList<>();
-        for (BellNote bn : song) {
-            Member member = new Member(bn, af);
-            Thread memberThread = new Thread(member);
-            members.add(memberThread);
-            memberThread.start();
-        }
+        assignParts();
 
-        // Ensure all members finish playing
-        for (Thread memberThread : members) {
-            try {
-                memberThread.join();
-            } catch (InterruptedException e) {
-                System.out.println("Thread interrupted: " + e.getMessage());
+        for (BellNote note : song) {
+            Member member = members.get(note.getNote());
+            if (member == null) {
+                System.err.println("No member assigned to play: " + note);
+            }
+            Thread memberThread = new Thread(member);
+            
+            synchronized (this) {
+                // Ensure all members finish playing
+                try {
+                    memberThread.join();
+                } catch (InterruptedException e) {
+                    System.out.println("Thread interrupted: " + e.getMessage());
+                }
             }
         }
-    }
-
-    private final AudioFormat af;
-
-    /**
-     * Constructs a Conductor with the specified audio format.
-     *
-     * @param af The audio format to use for playback
-     */
-    public Conductor(AudioFormat af) {
-        thread = new Thread(this, "Conductor");
-        this.af = af;
+        thread.start();
     }
 
     static NoteLength parseNoteLength(String numStr) {
@@ -101,30 +116,54 @@ public class Conductor implements Runnable {
         };
     }
 
-    /**
-     * Starts playing the current song.
-     */
-    public void playSong() {
-        thread.start();
+    private void startMembers() {
+        for (Member member : members.values()) {
+            member.startMember();
+            System.out.println("Member " + member + " started.");
+        }
+    }
+
+    private void stopMembers() {
+        try {
+            thread.join();
+        } catch (InterruptedException e) {
+            System.out.println("Thread interrupted: " + e.getMessage());
+        }
+        for (Member member : members.values()) {
+            member.stopMember();
+            System.out.println("Member " + member + " stopped.");
+        }
+        line.drain();
+        line.close();
     }
 
     @Override
     public void run() {
-        List<Thread> members = new ArrayList<>();
-        for (BellNote bn : song) {
-            Member member = new Member(bn, af);
-            Thread memberThread = new Thread(member);
-            members.add(memberThread);
-            memberThread.start();
-        }
+        startMembers();
+        System.out.println("Members started.");
+        try (final SourceDataLine line = AudioSystem.getSourceDataLine(af)) {
+            line.open(af);
+            line.start();
+            // Assigns the right member to each note
+            for (BellNote note : song) {
+                final Note noteToPlay = note.getNote();
+                Member member = members.get(noteToPlay);
 
-        // Ensure all members finish playing
-        for (Thread memberThread : members) {
-            try {
-                memberThread.join();
-            } catch (InterruptedException e) {
-                System.out.println("Thread interrupted: " + e.getMessage());
+                if (member == null) {
+                    System.err.println("No member assigned to play: " + note);
+                    continue;
+                }
+
+                synchronized (this) {
+                    System.out.println("Playing note: " + note);
+                    member.giveTurn();
+                }
             }
+
+            line.drain();
+        } catch (LineUnavailableException e) {
+            System.err.println("Error in Conductor: " + e.getMessage());
         }
     }
+
 }
