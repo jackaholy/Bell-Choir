@@ -1,67 +1,80 @@
 package src;
 
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
 
 public class Member implements Runnable {
 
     private final Thread thread;
     private final Note note;
-    private final BellNote bellNote;
-    private final AudioFormat audioFormat;
+    private final SourceDataLine line;
+    private BellNote bellNote;
     private boolean isPlaying = false;
+    private boolean myTurn;
 
     // Constructor
-    Member(BellNote bellNote, AudioFormat af) {
+    Member(BellNote bellNote, SourceDataLine line) {
         this.note = bellNote.note;
         this.bellNote = bellNote;
-        this.audioFormat = af;
-        thread = new Thread(this);
+        this.line = line;
+        thread = new Thread(this, "Bell Note: " + note);
     }
 
-    private void startMember() {
-        thread.start();
+    public synchronized void startMember() {
         isPlaying = true;
+        notify();
     }
 
-    private void stopMember() {
+    public synchronized void stopMember() {
         isPlaying = false;
+    }
+
+    public void addNote(BellNote note, Member member) {
+        this.bellNote = note;
+    }
+
+    public void giveTurn() {
         synchronized (this) {
-            this.notify();
-        }
-        try {
-            thread.join();
-        } catch (InterruptedException e) {
-            System.err.println("Problem stopping member " + e);
+            if (myTurn) {
+                throw new IllegalStateException("Attempt to give a turn to a player who's hasn't completed the current turn");
+            }
+            myTurn = true;
+            notify();
+            while (myTurn) {
+                try {
+                    wait();
+                } catch (InterruptedException ignored) {}
+            }
         }
     }
 
-    private void playNote(SourceDataLine line, BellNote bn) {
-        final int ms = Math.min(bn.length.timeMs(), Note.MEASURE_LENGTH_SEC * 1000);
+    void playNote() {
+        final int ms = Math.min(bellNote.length.timeMs(), Note.MEASURE_LENGTH_SEC * 1000);
         final int length = Note.SAMPLE_RATE * ms / 1000;
         // Write the note samples.
-        line.write(bn.note.sample(), 0, length);
+        line.write(bellNote.note.sample(), 0, length);
         // Add a short rest after playing the note.
         line.write(Note.REST.sample(), 0, 50);
     }
 
     @Override
     public void run() {
-        try (final SourceDataLine line = AudioSystem.getSourceDataLine(audioFormat)) {
-            {
-                line.open(audioFormat);
-                line.start();
+        isPlaying = true;
+        synchronized (this) {
+            while (isPlaying) {
+                // Wait for my turn
+                while (!myTurn) {
+                    try {
+                        wait();
+                    } catch (InterruptedException ignored) {}
+                }
 
-                playNote(line, bellNote);
+                // My turn!
+                playNote();
 
-                line.drain();
-                line.close();
+                // Done, complete turn and wakeup the waiting process
+                myTurn = false;
+                notify();
             }
-        } catch (LineUnavailableException e) {
-            System.err.println("Line unavailable " + e);
-            throw new RuntimeException(e);
         }
     }
 }
