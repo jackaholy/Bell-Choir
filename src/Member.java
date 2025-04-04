@@ -76,7 +76,9 @@ public class Member implements Runnable {
     @Override
     public void run() {
         while (isPlaying) {
+            // Make sure members aren't playing over one another
             synchronized (this) {
+                // If it's not your turn, wait
                 while (!myTurn) {
                     try {
                         wait();

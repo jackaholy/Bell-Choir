@@ -36,11 +36,12 @@ public class Conductor implements Runnable {
      * @param args Command line arguments (expects a single filename argument)
      */
     public static void main(String[] args) {
+        // Handle no length for a note
         if (args.length == 0) {
             System.out.println("Usage: java src.Tone <sngFile.txt>");
             return;
         }
-
+        // Handle no notes loaded
         song = loadNotes(args[0]);
         if (song.isEmpty()) {
             System.out.println("No notes loaded. Exiting.");
@@ -53,6 +54,7 @@ public class Conductor implements Runnable {
             Conductor conductor = new Conductor(af);
             // Tell the conductor to play the song.
             conductor.playSong(song);
+            // Tell the conductor to stop the members from playing.
             conductor.stopMembers();
         } catch (LineUnavailableException e) {
             System.out.println("Line unavailable");
@@ -81,7 +83,7 @@ public class Conductor implements Runnable {
             members.put(note.getNote(), new Member(note, line)); // Assign the note to the member
             System.out.println("Assigned note: " + note.getNote() + " to member: " + members.get(note.getNote()));
         }
-
+        // Catch if there's no members to play notes.
         if (members.isEmpty()) {
             System.err.println("No members available to play notes.");
         }
@@ -96,17 +98,39 @@ public class Conductor implements Runnable {
     private static List<BellNote> loadNotes(String filename) {
         final File file = new File(filename);
         final List<BellNote> notes = new ArrayList<>();
+
+        // Check if file exists before attempting to read
         if (file.exists()) {
+            // Use try-with-resources to ensure Scanner is closed automatically
             try (Scanner scanner = new Scanner(file)) {
                 while (scanner.hasNextLine()) {
                     String line = scanner.nextLine();
+
+                    // Skip empty lines
+                    if (line.isEmpty()) {
+                        continue;
+                    }
+
+                    // Split line into components (note and length)
                     String[] token = line.split(" ");
+                    /*
+                    This try-catch loop is created with help from chat.deepseek.com.
+                    I asked it to give me some edge cases and error handling
+                     */
+                    try {
+                        // Convert first token to Note enum
+                        Note noteEnum = Note.valueOf(token[0]);
+                        // Convert second token to NoteLength enum
+                        NoteLength lengthEnum = parseNoteLength(token[1]);
 
-                    Note noteEnum = Note.valueOf(token[0]);
-                    NoteLength lengthEnum = parseNoteLength(token[1]);
+                        // Create BellNote object and add to list
+                        BellNote note = new BellNote(noteEnum, lengthEnum);
+                        notes.add(note);
 
-                    BellNote note = new BellNote(noteEnum, lengthEnum);
-                    notes.add(note);
+                    } catch (IllegalArgumentException e) {
+                        System.err.println("Skipping invalid note definition: " + line);
+                        // Continue with next line instead of failing entire load
+                    }
                 }
             } catch (IOException e) {
                 System.out.println("Error reading file " + filename);
@@ -124,6 +148,7 @@ public class Conductor implements Runnable {
      * @throws LineUnavailableException if the audio line cannot be opened
      */
     void playSong(List<BellNote> song) throws LineUnavailableException {
+        // Assign each member to note
         assignParts();
 
         // Start all member threads
@@ -152,7 +177,9 @@ public class Conductor implements Runnable {
      * @throws IllegalArgumentException if the input is not a valid note length
      */
     static NoteLength parseNoteLength(String numStr) {
+        // Convert each note number into a note length
         int num = Integer.parseInt(numStr);
+        // Figure out the desired note length
         return switch (num) {
             case 1 -> NoteLength.WHOLE;
             case 2 -> NoteLength.HALF;
@@ -178,10 +205,12 @@ public class Conductor implements Runnable {
      */
     private void stopMembers() {
         try {
+            // Wait for the conductor thread to finish processing
             thread.join();
         } catch (InterruptedException e) {
             System.out.println("Thread interrupted: " + e.getMessage());
         }
+        // Stop each member thread in the orchestra
         for (Member member : members.values()) {
             member.stopMember();
             System.out.println("Member " + member + " stopped.");
@@ -200,12 +229,14 @@ public class Conductor implements Runnable {
     @Override
     public void run() {
         try {
+            // Look at the next line and try starting a member thread.
             line.open(af);
             line.start();
             startMembers();
-
+            // Give each member a note to play.
             for (BellNote note : song) {
                 Member member = members.get(note.getNote());
+                // Handle if no members threads are created yet.
                 if (member != null) {
                     synchronized (member) {
                         member.myTurn = true;
@@ -219,6 +250,7 @@ public class Conductor implements Runnable {
         } catch (LineUnavailableException | InterruptedException e) {
             System.err.println("Thread interrupted: " + e.getMessage());
         } finally {
+            // Stop all the members in the choir.
             stopMembers();
         }
     }
