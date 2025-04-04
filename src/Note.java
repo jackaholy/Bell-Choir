@@ -1,5 +1,9 @@
 package src;
 
+/**
+ * Enum representing musical notes with their corresponding frequencies.
+ * Includes functionality to generate audio samples for each note.
+ */
 public enum Note {
     // REST Must be the first 'src.Note'
     REST,
@@ -17,17 +21,24 @@ public enum Note {
     G4S,
     A5;
 
-    public static final int SAMPLE_RATE = 48 * 1024; // ~48KHz
-    public static final int MEASURE_LENGTH_SEC = 1;
+    // Audio configuration constants
+    public static final int SAMPLE_RATE = 48 * 1024; // ~48KHz sampling rate
+    public static final int MEASURE_LENGTH_SEC = 1; // Duration of one measure in seconds
 
     // Circumference of a circle divided by # of samples
     private static final double step_alpha = (2.0d * Math.PI) / SAMPLE_RATE;
 
-    private final double FREQUENCY_A_HZ = 440.0d;
-    private final double MAX_VOLUME = 127.0d;
+    // Audio generation parameters
+    private final double FREQUENCY_A_HZ = 440.0d; // Reference frequency (A4)
+    private final double MAX_VOLUME = 127.0d; // Maximum amplitude for 8-bit audio
 
+    // Sample data for this note (pre-generated in constructor)
     private final byte[] sinSample = new byte[MEASURE_LENGTH_SEC * SAMPLE_RATE];
 
+    /**
+     * Constructor generates the audio sample for each note.
+     * For non-REST notes, creates a sinusoidal wave of the appropriate frequency.
+     */
     private Note() {
         int n = this.ordinal();
         if (n > 0) {
@@ -43,7 +54,12 @@ public enum Note {
             }
         }
     }
-
+    /**
+     * Gets the audio sample data for this note.
+     * For REST notes, returns silence (zero-filled array).
+     *
+     * @return byte array containing the audio samples
+     */
     public byte[] sample() {
         return sinSample;
     }

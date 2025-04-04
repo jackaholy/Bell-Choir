@@ -8,14 +8,33 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
+/**
+ * The Conductor class orchestrates the playing of a musical composition.
+ * It manages multiple Member threads (each representing a musical note) and
+ * synchronizes their playback through a shared audio line.
+ */
 public class Conductor implements Runnable {
 
+    // The conductor's control thread
     private final Thread thread;
+
+    // Audio format configuration
     private final AudioFormat af;
+
+    // Shared audio output line
     private final SourceDataLine line;
+
+    // Maps notes to their player threads
     private final Map<Note, Member> members = new HashMap<>();
+
+    // The musical composition to be played
     private static List<BellNote> song;
 
+    /**
+     * Main entry point for the application. Loads a song file and initiates playback.
+     *
+     * @param args Command line arguments (expects a single filename argument)
+     */
     public static void main(String[] args) {
         if (args.length == 0) {
             System.out.println("Usage: java src.Tone <sngFile.txt>");
@@ -40,12 +59,22 @@ public class Conductor implements Runnable {
         }
     }
 
+    /**
+     * Constructs a Conductor with the specified audio format.
+     *
+     * @param af The audio format configuration for playback
+     * @throws LineUnavailableException if the audio line cannot be opened
+     */
     public Conductor(AudioFormat af) throws LineUnavailableException {
         thread = new Thread(this, "Conductor");
         this.af = af;
         this.line = AudioSystem.getSourceDataLine(af); // Initialize the line
     }
 
+    /**
+     * Assigns each unique note in the song to a dedicated Member thread.
+     * Creates a one-to-one mapping between notes and players.
+     */
     private void assignParts() {
         // Assign the notes to each member.
         for (BellNote note : song) {
@@ -58,6 +87,12 @@ public class Conductor implements Runnable {
         }
     }
 
+    /**
+     * Loads musical notes from a text file and converts them to BellNote objects.
+     *
+     * @param filename Path to the song definition file
+     * @return List of BellNote objects representing the song
+     */
     private static List<BellNote> loadNotes(String filename) {
         final File file = new File(filename);
         final List<BellNote> notes = new ArrayList<>();
@@ -82,6 +117,12 @@ public class Conductor implements Runnable {
         return notes;
     }
 
+    /**
+     * Initiates playback of the musical composition.
+     *
+     * @param song The list of BellNotes to be played
+     * @throws LineUnavailableException if the audio line cannot be opened
+     */
     void playSong(List<BellNote> song) throws LineUnavailableException {
         assignParts();
 
@@ -103,6 +144,13 @@ public class Conductor implements Runnable {
         thread.start();
     }
 
+    /**
+     * Converts numeric string representation to NoteLength enum values.
+     *
+     * @param numStr String representation of note length (1, 2, 4, or 8)
+     * @return Corresponding NoteLength enum value
+     * @throws IllegalArgumentException if the input is not a valid note length
+     */
     static NoteLength parseNoteLength(String numStr) {
         int num = Integer.parseInt(numStr);
         return switch (num) {
@@ -114,6 +162,9 @@ public class Conductor implements Runnable {
         };
     }
 
+    /**
+     * Signals all Member threads to begin playback.
+     */
     private void startMembers() {
         for (Member member : members.values()) {
             member.startMember();
@@ -121,6 +172,10 @@ public class Conductor implements Runnable {
         }
     }
 
+    /**
+     * Stops all Member threads and cleans up audio resources.
+     * Ensures proper shutdown by draining and closing the audio line.
+     */
     private void stopMembers() {
         try {
             thread.join();
@@ -135,6 +190,13 @@ public class Conductor implements Runnable {
         line.close();
     }
 
+    /**
+     * The conductor's main control loop. Coordinates note playback by:
+     * 1. Opening the audio line
+     * 2. Starting all members
+     * 3. Sequentially triggering each note's playback
+     * 4. Stopping all the members
+     */
     @Override
     public void run() {
         try {
@@ -160,5 +222,4 @@ public class Conductor implements Runnable {
             stopMembers();
         }
     }
-
 }
