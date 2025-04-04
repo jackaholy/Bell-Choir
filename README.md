@@ -51,3 +51,4 @@ Then you can run:
 ```bash
 ant run -Dsong=songs/customSong.txt
 ```
+replacing *customSong.txt* with your own song.
