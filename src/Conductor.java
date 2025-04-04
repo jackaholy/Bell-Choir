@@ -241,6 +241,10 @@ public class Conductor implements Runnable {
             line.open(af);
             line.start();
             startMembers();
+            /*
+            The order of this for loop is created with help from chat.deepseek.com.
+            I asked it to help me fix a previously not working loop.
+            */
             // Give each member a note to play.
             for (BellNote note : song) {
                 Member member = members.get(note.getNote());
