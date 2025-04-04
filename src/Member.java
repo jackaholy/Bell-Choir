@@ -26,6 +26,7 @@ public class Member implements Runnable {
 
     public synchronized void stopMember() {
         isPlaying = false;
+        thread.interrupt();
     }
 
     public void addNote(BellNote note, Member member) {
@@ -34,20 +35,20 @@ public class Member implements Runnable {
 
     public void giveTurn() {
         synchronized (this) {
-            if (myTurn) {
-                throw new IllegalStateException("Attempt to give a turn to a player who's hasn't completed the current turn");
-            }
-            myTurn = true;
-            notify();
             while (myTurn) {
                 try {
                     wait();
-                } catch (InterruptedException ignored) {}
+                } catch (InterruptedException ignored) {
+                }
             }
+            System.out.println("Giving a turn to " + this);
+            myTurn = true;
+            notify();
         }
     }
 
     void playNote() {
+        System.out.println("Playing note on audio line: " + bellNote.note);
         final int ms = Math.min(bellNote.length.timeMs(), Note.MEASURE_LENGTH_SEC * 1000);
         final int length = Note.SAMPLE_RATE * ms / 1000;
         // Write the note samples.
@@ -61,14 +62,16 @@ public class Member implements Runnable {
         isPlaying = true;
         synchronized (this) {
             while (isPlaying) {
-                // Wait for my turn
+                System.out.println(Thread.currentThread().getName() + " is waiting for a turn.");
                 while (!myTurn) {
                     try {
-                        wait();
-                    } catch (InterruptedException ignored) {}
+                        wait(); // Wait for my turn
+                    } catch (InterruptedException ignored) {
+                    }
                 }
 
-                // My turn!
+                System.out.println(Thread.currentThread().getName() + " is playing note: " + bellNote);
+                // Play the note of whichever members turn it is
                 playNote();
 
                 // Done, complete turn and wakeup the waiting process
