@@ -1,0 +1,6 @@
+archive/
+.DS_Store
+.idea
+out/
+dist/
+build/
