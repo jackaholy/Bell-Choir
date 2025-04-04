@@ -20,18 +20,34 @@ Move into a new directory and run
 git clone https://github.com/jackaholy/Bell-Choir
 ```
 
-### Run Application
+### Build Application
 
 Make sure you're in your root directory (Tone):
 
-```
-cd /Folder/Tone
+```bash
+ant compile
 ```
 
-And run:
+This will comile all the files.
+
+### Run Application
+
+Make sure you're in your root directory (Tone) and run:
 
 ```bash
 ant run
 ```
 
 This will automatically play the default song in the folder.
+
+If you want to run a custom song, make sure it's in the proper note format, as a txt file, and put it in:
+
+```
+/Tone/songs
+```
+
+Then you can run:
+
+```bash
+ant run -Dsong=songs/customSong.txt
+```
